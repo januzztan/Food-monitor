@@ -1,6 +1,21 @@
-# monitor_food
+# Web application for monitoring package for food preservation
 
-This template should help get you started developing with Vue 3 in Vite.
+## setup steps
+
+1. Install [node.js](https://nodejs.org/en/download) using installer
+
+2. Run in project cd
+
+Install tailwind css
+```sh
+npm install tailwindcss @tailwindcss/vite
+```
+
+Install highcharts library
+```sh
+npm install highcharts --save
+```
+
 
 ## Recommended IDE Setup
 
