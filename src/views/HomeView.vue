@@ -50,6 +50,7 @@ const sensorData = {
 
 // Chart Management
 let charts = []
+let combinedChart = null
 let eventListeners = []
 
 function getChartOptions(id, title, data) {
@@ -91,6 +92,73 @@ function getChartOptions(id, title, data) {
   }
 }
 
+function getCombinedChartOptions() {
+  return {
+    chart: {
+      renderTo: 'combinedChart',
+      type: 'line',
+    },
+    title: {
+      text: 'Combined Sensor Data',
+    },
+    xAxis: {
+      categories,
+      crosshair: true,
+    },
+    yAxis: [
+      {
+        title: {
+          text: 'Temperature (°C) & Humidity (%)',
+        },
+        labels: {
+          format: '{value}',
+        },
+        opposite: false,
+      },
+      {
+        title: {
+          text: 'Pressure (hPa)',
+        },
+        labels: {
+          format: '{value}',
+        },
+        opposite: true,
+      },
+    ],
+    tooltip: {
+      shared: true,
+    },
+    series: [
+      {
+        name: 'Temperature',
+        data: sensorData.temperature.data,
+        color: sensorData.temperature.color,
+        yAxis: 0,
+      },
+      {
+        name: 'Humidity',
+        data: sensorData.humidity.data,
+        color: sensorData.humidity.color,
+        yAxis: 0,
+      },
+      {
+        name: 'Pressure',
+        data: sensorData.pressure.data,
+        color: sensorData.pressure.color,
+        yAxis: 1,
+      },
+    ],
+    legend: {
+      layout: 'horizontal',
+      align: 'center',
+      verticalAlign: 'bottom',
+    },
+    credits: {
+      enabled: false,
+    },
+  }
+}
+
 // Chart Synchronization
 function syncTooltip(e) {
   charts.forEach((chart) => {
@@ -121,6 +189,8 @@ onMounted(() => {
     ['humidityChart', 'Humidity', sensorData.humidity],
     ['pressureChart', 'Pressure', sensorData.pressure],
   ].map(([id, title, data]) => Highcharts.chart(getChartOptions(id, title, data)))
+
+  combinedChart = Highcharts.chart(getCombinedChartOptions())
 
   // Event Handlers
   const chartIds = ['tempChart', 'humidityChart', 'pressureChart']
@@ -155,6 +225,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   eventListeners.forEach(({ el, eventType, handler }) => el.removeEventListener(eventType, handler))
   charts.forEach((chart) => chart?.destroy?.())
+  if (combinedChart) combinedChart.destroy()
   eventListeners = []
   charts = []
 })
@@ -219,12 +290,20 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <!-- Historical Data Charts (Stacked) -->
+        <!-- Historical Data Charts (Side by Side) -->
         <div class="bg-white shadow-md rounded-lg p-4">
           <h2 class="text-2xl font-bold mb-4">Historical Data</h2>
-          <div id="tempChart" class="mb-6"></div>
-          <div id="humidityChart" class="mb-6"></div>
-          <div id="pressureChart"></div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div id="tempChart"></div>
+            <div id="humidityChart"></div>
+            <div id="pressureChart"></div>
+          </div>
+        </div>
+
+        <!-- Combined Chart -->
+        <div class="bg-white shadow-md rounded-lg p-4">
+          <h2 class="text-2xl font-bold mb-4">Combined Historical Data</h2>
+          <div id="combinedChart" class="w-full h-96"></div>
         </div>
       </div>
     </div>
