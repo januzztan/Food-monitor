@@ -223,7 +223,7 @@ onMounted(() => {
   // Fetch real data from Firestore, ordered by timestamp
   const q = query(
     collection(db, 'sensor_readings'),
-    orderBy('datetime', 'asc') // Order by datetime field ascending
+    orderBy('datetime', 'asc'), // Order by datetime field ascending
   )
 
   unsubscribeFirestore = onSnapshot(q, (querySnapshot) => {
@@ -239,14 +239,14 @@ onMounted(() => {
       // No need for additional sorting in the client side
 
       // Extract and prepare data for charts
-      timeCategories.value = realSensorData.map(reading => {
+      timeCategories.value = realSensorData.map((reading) => {
         // Extract time part from timestamp (format: 22/05/2025 14:11:10)
         return reading.timestamp ? reading.timestamp.split(' ')[1].substring(0, 5) : ''
       })
 
-      temperatureData.value = realSensorData.map(reading => reading.temperature || 0)
-      humidityData.value = realSensorData.map(reading => reading.humidity || 0)
-      pressureData.value = realSensorData.map(reading => reading.pressure || 0)
+      temperatureData.value = realSensorData.map((reading) => reading.temperature || 0)
+      humidityData.value = realSensorData.map((reading) => reading.humidity || 0)
+      pressureData.value = realSensorData.map((reading) => reading.pressure || 0)
 
       // Update current readings with latest data (still need to find the most recent)
       updateCurrentReadings(realSensorData)
