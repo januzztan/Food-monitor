@@ -1,6 +1,8 @@
 <script setup>
-import { onMounted, onBeforeUnmount } from 'vue'
+import { onMounted, onBeforeUnmount, ref } from 'vue'
 import Highcharts from 'highcharts'
+import { db } from '@/firebase'
+import { collection, query, onSnapshot, orderBy } from 'firebase/firestore'
 
 // Set Highcharts global options
 Highcharts.setOptions({
@@ -12,37 +14,35 @@ Highcharts.setOptions({
 
 // Function to take a picture
 const takePicture = () => {
-  // Add your camera functionality here
   console.log('Taking picture...')
 }
 
-// Data Configuration
-const categories = Array.from({ length: 61 }, (_, i) => {
-  const hour = Math.floor(i / 60) + 10
-  const minute = i % 60
-  return `${hour}:${minute.toString().padStart(2, '0')}`
-})
+// Current sensor values (reactive)
+const currentTemperature = ref(0)
+const currentHumidity = ref(0)
+const currentPressure = ref(0)
+const currentTime = ref('--:--')
+
+// Chart data (reactive)
+const timeCategories = ref([])
+const temperatureData = ref([])
+const humidityData = ref([])
+const pressureData = ref([])
 
 // Sensor Data
 const sensorData = {
   temperature: {
-    data: Array(61)
-      .fill(22)
-      .map((val, i) => Math.floor(i / 10) + val),
+    data: temperatureData,
     color: 'rgb(255, 99, 132)',
     unit: '°C',
   },
   humidity: {
-    data: Array(61)
-      .fill(60)
-      .map((val, i) => Math.floor(i / 10) + val),
+    data: humidityData,
     color: 'rgb(54, 162, 235)',
     unit: '%',
   },
   pressure: {
-    data: Array(61)
-      .fill(1012)
-      .map((val, i) => val + (i > 30 ? 2 : 0)),
+    data: pressureData,
     color: 'rgb(75, 192, 192)',
     unit: 'hPa',
   },
@@ -52,6 +52,7 @@ const sensorData = {
 let charts = []
 let combinedChart = null
 let eventListeners = []
+let unsubscribeFirestore = null
 
 function getChartOptions(id, title, data) {
   const { color, unit, data: values } = data
@@ -65,7 +66,7 @@ function getChartOptions(id, title, data) {
     },
     title: { text: title },
     xAxis: {
-      categories,
+      categories: timeCategories.value,
       crosshair: true,
       events: { setExtremes: syncExtremes },
     },
@@ -80,7 +81,7 @@ function getChartOptions(id, title, data) {
     series: [
       {
         name: title,
-        data: values,
+        data: values.value || [],
         color,
         showInNavigator: true,
       },
@@ -102,7 +103,7 @@ function getCombinedChartOptions() {
       text: 'Combined Sensor Data',
     },
     xAxis: {
-      categories,
+      categories: timeCategories.value,
       crosshair: true,
     },
     yAxis: [
@@ -131,19 +132,19 @@ function getCombinedChartOptions() {
     series: [
       {
         name: 'Temperature',
-        data: sensorData.temperature.data,
+        data: temperatureData.value || [],
         color: sensorData.temperature.color,
         yAxis: 0,
       },
       {
         name: 'Humidity',
-        data: sensorData.humidity.data,
+        data: humidityData.value || [],
         color: sensorData.humidity.color,
         yAxis: 0,
       },
       {
         name: 'Pressure',
-        data: sensorData.pressure.data,
+        data: pressureData.value || [],
         color: sensorData.pressure.color,
         yAxis: 1,
       },
@@ -157,6 +158,41 @@ function getCombinedChartOptions() {
       enabled: false,
     },
   }
+}
+
+// Update charts with new data
+function updateCharts() {
+  if (charts.length) {
+    charts.forEach((chart, index) => {
+      if (chart && chart.series && chart.series[0]) {
+        if (index === 0) chart.series[0].setData(temperatureData.value)
+        if (index === 1) chart.series[0].setData(humidityData.value)
+        if (index === 2) chart.series[0].setData(pressureData.value)
+        chart.xAxis[0].setCategories(timeCategories.value)
+      }
+    })
+  }
+
+  if (combinedChart && combinedChart.series) {
+    combinedChart.series[0].setData(temperatureData.value)
+    combinedChart.series[1].setData(humidityData.value)
+    combinedChart.series[2].setData(pressureData.value)
+    combinedChart.xAxis[0].setCategories(timeCategories.value)
+  }
+}
+
+// Get latest reading for current display
+function updateCurrentReadings(data) {
+  if (!data || !data.length) return
+
+  // Get the last element (most recent) if ordered by datetime ascending
+  const latest = data[data.length - 1]
+
+  // Update current values
+  currentTemperature.value = latest.temperature?.toFixed(1) || 0
+  currentHumidity.value = latest.humidity?.toFixed(1) || 0
+  currentPressure.value = latest.pressure?.toFixed(1) || 0
+  currentTime.value = latest.timestamp?.split(' ')[1] || '--:--'
 }
 
 // Chart Synchronization
@@ -184,6 +220,43 @@ function syncExtremes(e) {
 
 // Lifecycle Hooks
 onMounted(() => {
+  // Fetch real data from Firestore, ordered by timestamp
+  const q = query(
+    collection(db, 'sensor_readings'),
+    orderBy('datetime', 'asc') // Order by datetime field ascending
+  )
+
+  unsubscribeFirestore = onSnapshot(q, (querySnapshot) => {
+    const realSensorData = []
+    querySnapshot.forEach((doc) => {
+      realSensorData.push(doc.data())
+    })
+
+    console.log('Current data in db: ', realSensorData)
+
+    if (realSensorData.length) {
+      // Since data is already ordered by datetime from Firestore
+      // No need for additional sorting in the client side
+
+      // Extract and prepare data for charts
+      timeCategories.value = realSensorData.map(reading => {
+        // Extract time part from timestamp (format: 22/05/2025 14:11:10)
+        return reading.timestamp ? reading.timestamp.split(' ')[1].substring(0, 5) : ''
+      })
+
+      temperatureData.value = realSensorData.map(reading => reading.temperature || 0)
+      humidityData.value = realSensorData.map(reading => reading.humidity || 0)
+      pressureData.value = realSensorData.map(reading => reading.pressure || 0)
+
+      // Update current readings with latest data (still need to find the most recent)
+      updateCurrentReadings(realSensorData)
+
+      // Update charts if they exist
+      updateCharts()
+    }
+  })
+
+  // Initialize charts with empty data
   charts = [
     ['tempChart', 'Temperature', sensorData.temperature],
     ['humidityChart', 'Humidity', sensorData.humidity],
@@ -223,11 +296,22 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  // Clean up Firestore listener
+  if (unsubscribeFirestore) {
+    unsubscribeFirestore()
+  }
+
+  // Clean up event listeners
   eventListeners.forEach(({ el, eventType, handler }) => el.removeEventListener(eventType, handler))
+
+  // Destroy charts
   charts.forEach((chart) => chart?.destroy?.())
   if (combinedChart) combinedChart.destroy()
+
+  // Reset variables
   eventListeners = []
   charts = []
+  combinedChart = null
 })
 </script>
 
@@ -267,25 +351,25 @@ onBeforeUnmount(() => {
             <!-- Current Time -->
             <div class="bg-white shadow-md rounded-lg p-4 text-center">
               <h2 class="text-xl font-semibold mb-2">Time</h2>
-              <p class="text-2xl font-bold text-gray-700">14:00</p>
+              <p class="text-2xl font-bold text-gray-700">{{ currentTime }}</p>
             </div>
 
             <!-- Current Temperature -->
             <div class="bg-white shadow-md rounded-lg p-4 text-center">
               <h2 class="text-xl font-semibold mb-2">Temperature</h2>
-              <p class="text-2xl font-bold text-red-500">26°C</p>
+              <p class="text-2xl font-bold text-red-500">{{ currentTemperature }}°C</p>
             </div>
 
             <!-- Current Humidity -->
             <div class="bg-white shadow-md rounded-lg p-4 text-center">
               <h2 class="text-xl font-semibold mb-2">Humidity</h2>
-              <p class="text-2xl font-bold text-blue-500">64%</p>
+              <p class="text-2xl font-bold text-blue-500">{{ currentHumidity }}%</p>
             </div>
 
             <!-- Current Pressure -->
             <div class="bg-white shadow-md rounded-lg p-4 text-center">
               <h2 class="text-xl font-semibold mb-2">Pressure</h2>
-              <p class="text-2xl font-bold text-green-500">1012 hPa</p>
+              <p class="text-2xl font-bold text-green-500">{{ currentPressure }} hPa</p>
             </div>
           </div>
         </div>
