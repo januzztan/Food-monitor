@@ -6,6 +6,12 @@
 
 2. Run in project cd
 
+Install firebase
+
+'''sh
+npm install firebase
+'''
+
 Install tailwind css
 ```sh
 npm install tailwindcss @tailwindcss/vite
@@ -15,6 +21,8 @@ Install highcharts library
 ```sh
 npm install highcharts --save
 ```
+
+3. add .env.local file to root folder
 
 
 ## Recommended IDE Setup
