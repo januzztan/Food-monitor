@@ -1,6 +1,6 @@
 # Web application for monitoring package for food preservation
 
-## setup steps
+## Setup steps
 
 1. Install [node.js](https://nodejs.org/en/download) using installer
 
@@ -8,9 +8,9 @@
 
 Install firebase
 
-'''sh
+```sh
 npm install firebase
-'''
+```
 
 Install tailwind css
 ```sh
@@ -22,8 +22,14 @@ Install highcharts library
 npm install highcharts --save
 ```
 
-3. add .env.local file to root folder
+3. Add .env.local file to root folder
 
+4. Add to .gitignore file 
+```sh
+# .gitignore
+.env.local
+.env.*.local
+```
 
 ## Recommended IDE Setup
 
