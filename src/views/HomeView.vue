@@ -53,6 +53,37 @@ let charts = []
 let combinedChart = null
 let eventListeners = []
 let unsubscribeFirestore = null
+// Track if we're currently in a reset operation to prevent infinite loops
+let isResetting = false;
+
+// Function to sync reset zoom across all charts
+function syncResetZoom() {
+  if (isResetting) return;
+
+  isResetting = true;
+
+  // Reset all individual charts
+  charts.forEach(chart => {
+    if (chart && chart.xAxis && chart.xAxis[0]) {
+      chart.xAxis[0].setExtremes(null, null);
+    }
+  });
+
+  // Reset combined chart
+  if (combinedChart && combinedChart.xAxis && combinedChart.xAxis[0]) {
+    combinedChart.xAxis[0].setExtremes(null, null);
+  }
+
+  isResetting = false;
+}
+
+// Handle after extremes are set - detect reset zoom
+function afterSetExtremes(e) {
+  // If this is a reset (min/max are null or undefined), sync all charts
+  if (e.min === undefined && e.max === undefined && !isResetting) {
+    syncResetZoom();
+  }
+}
 
 function getChartOptions(id, title, data) {
   const { color, unit, data: values } = data
@@ -62,13 +93,33 @@ function getChartOptions(id, title, data) {
       renderTo: id,
       type: 'line',
       zoomType: 'x',
-      events: { selection: syncExtremes },
+      events: {
+        selection: syncExtremes,
+      },
+      resetZoomButton: {
+        position: {
+          align: 'right',
+          x: -10,
+          y: 10
+        },
+        theme: {
+          fill: 'white',
+          stroke: '#999',
+          r: 5,
+          style: {
+            color: '#003399'
+          }
+        }
+      }
     },
     title: { text: title },
     xAxis: {
       categories: timeCategories.value,
       crosshair: true,
-      events: { setExtremes: syncExtremes },
+      events: {
+        setExtremes: syncExtremes,
+        afterSetExtremes: afterSetExtremes
+      },
     },
     yAxis: {
       title: { text: `${title} (${unit})` },
@@ -98,6 +149,24 @@ function getCombinedChartOptions() {
     chart: {
       renderTo: 'combinedChart',
       type: 'line',
+      zoomType: 'x',  // Add zoom capability on x axis
+      panning: true,  // Enable panning
+      panKey: 'shift', // Pan when shift key is pressed
+      resetZoomButton: {
+        position: {
+          align: 'right',
+          x: -10,
+          y: 10
+        },
+        theme: {
+          fill: 'white',
+          stroke: '#999',
+          r: 5,
+          style: {
+            color: '#003399'
+          }
+        }
+      }
     },
     title: {
       text: 'Combined Sensor Data',
@@ -105,6 +174,10 @@ function getCombinedChartOptions() {
     xAxis: {
       categories: timeCategories.value,
       crosshair: true,
+      events: {
+        setExtremes: syncExtremes,  // Sync with other charts
+        afterSetExtremes: afterSetExtremes
+      }
     },
     yAxis: [
       {
@@ -128,6 +201,7 @@ function getCombinedChartOptions() {
     ],
     tooltip: {
       shared: true,
+      crosshairs: true,
     },
     series: [
       {
@@ -154,9 +228,29 @@ function getCombinedChartOptions() {
       align: 'center',
       verticalAlign: 'bottom',
     },
+    navigator: {
+      enabled: true,
+      height: 20
+    },
+    scrollbar: {
+      enabled: true
+    },
     credits: {
       enabled: false,
     },
+    plotOptions: {
+      series: {
+        marker: {
+          enabled: false, // Disable markers for cleaner look when zoomed
+          states: {
+            hover: {
+              enabled: true, // But show on hover
+              radius: 3
+            }
+          }
+        }
+      }
+    }
   }
 }
 
@@ -209,13 +303,20 @@ function syncTooltip(e) {
 }
 
 function syncExtremes(e) {
-  if (e.trigger !== 'syncExtremes') {
-    charts.forEach((chart) => {
-      if (chart !== this.chart && chart.xAxis[0].setExtremes) {
-        chart.xAxis[0].setExtremes(e.min, e.max, undefined, false, { trigger: 'syncExtremes' })
-      }
-    })
+  // Don't sync if this is part of a syncing operation already
+  if (e.trigger === 'syncExtremes') {
+    return;
   }
+
+  // For regular extremes syncing
+  const allCharts = [...charts];
+  if (combinedChart) allCharts.push(combinedChart);
+
+  allCharts.forEach((chart) => {
+    if (chart !== this.chart && chart.xAxis[0].setExtremes) {
+      chart.xAxis[0].setExtremes(e.min, e.max, undefined, false, { trigger: 'syncExtremes' });
+    }
+  });
 }
 
 // Lifecycle Hooks
@@ -317,8 +418,8 @@ onBeforeUnmount(() => {
 
 <template>
   <main class="font-sans leading-normal tracking-normal">
-    <div class="container mx-auto p-2">
-      <div class="flex justify-between items-center mb-5">
+    <div class="container mx-auto p-4">
+      <div class="flex justify-between items-center mb-12">
         <div>
           <p class="text-5xl font-bold pb-5">Food Monitor</p>
         </div>
@@ -343,8 +444,9 @@ onBeforeUnmount(() => {
         </button>
       </div>
 
-      <div class="space-y-8">
-        <div class="bg-white shadow-md rounded-lg p-4">
+      <!-- Current Data Section -->
+      <section>
+        <div class="bg-white shadow-lg rounded-lg p-6 border-t-4 border-blue-500">
           <p class="text-2xl font-bold mt-2 pb-5">Current Data</p>
 
           <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -373,23 +475,33 @@ onBeforeUnmount(() => {
             </div>
           </div>
         </div>
+      </section>
 
-        <!-- Historical Data Charts (Side by Side) -->
-        <div class="bg-white shadow-md rounded-lg p-4">
-          <h2 class="text-2xl font-bold mb-4">Historical Data</h2>
+      <!-- Spacer -->
+      <div class="h-5"></div>
+
+      <!-- Historical Data Charts Section -->
+      <section>
+        <div class="bg-white shadow-lg rounded-lg p-6 border-t-4 border-green-500">
+          <h2 class="text-2xl font-bold mb-6">Historical Data</h2>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div id="tempChart"></div>
             <div id="humidityChart"></div>
             <div id="pressureChart"></div>
           </div>
         </div>
+      </section>
 
-        <!-- Combined Chart -->
-        <div class="bg-white shadow-md rounded-lg p-4">
-          <h2 class="text-2xl font-bold mb-4">Combined Historical Data</h2>
+      <!-- Spacer -->
+      <div class="h-5"></div>
+
+      <!-- Combined Chart Section -->
+      <section>
+        <div class="bg-white shadow-lg rounded-lg p-6 border-t-4 border-purple-500">
+          <h2 class="text-2xl font-bold mb-6">Combined Historical Data</h2>
           <div id="combinedChart" class="w-full h-96"></div>
         </div>
-      </div>
+      </section>
     </div>
   </main>
 </template>
