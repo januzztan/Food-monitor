@@ -23,6 +23,10 @@ const currentHumidity = ref(0)
 const currentPressure = ref(0)
 const currentTime = ref('--:--')
 
+// Add these new refs for separate date and time
+const currentDate = ref('--/--/----')
+const currentTimeOnly = ref('--:--')
+
 // Chart data (reactive)
 const timeCategories = ref([])
 const temperatureData = ref([])
@@ -120,6 +124,12 @@ function getChartOptions(id, title, data) {
         setExtremes: syncExtremes,
         afterSetExtremes: afterSetExtremes
       },
+      labels: {
+        rotation: -45,
+        style: {
+          fontSize: '10px'
+        }
+      }
     },
     yAxis: {
       title: { text: `${title} (${unit})` },
@@ -177,6 +187,12 @@ function getCombinedChartOptions() {
       events: {
         setExtremes: syncExtremes,  // Sync with other charts
         afterSetExtremes: afterSetExtremes
+      },
+      labels: {
+        rotation: -45,
+        style: {
+          fontSize: '10px'
+        }
       }
     },
     yAxis: [
@@ -286,7 +302,19 @@ function updateCurrentReadings(data) {
   currentTemperature.value = latest.temperature?.toFixed(1) || 0
   currentHumidity.value = latest.humidity?.toFixed(1) || 0
   currentPressure.value = latest.pressure?.toFixed(1) || 0
-  currentTime.value = latest.timestamp?.split(' ')[1] || '--:--'
+
+  // Split timestamp into date and time parts
+  if (latest.timestamp) {
+    const [datePart, timePart] = latest.timestamp.split(' ');
+    currentDate.value = datePart || '--/--/----';
+    currentTimeOnly.value = timePart || '--:--';
+  } else {
+    currentDate.value = '--/--/----';
+    currentTimeOnly.value = '--:--';
+  }
+
+  // Keep the original timestamp for compatibility
+  currentTime.value = latest.timestamp || '--:--'
 }
 
 // Chart Synchronization
@@ -341,8 +369,16 @@ onMounted(() => {
 
       // Extract and prepare data for charts
       timeCategories.value = realSensorData.map((reading) => {
-        // Extract time part from timestamp (format: 22/05/2025 14:11:10)
-        return reading.timestamp ? reading.timestamp.split(' ')[1].substring(0, 5) : ''
+        // Extract both date and time parts from timestamp (format: 22/05/2025 14:11:10)
+        if (!reading.timestamp) return '';
+
+        const [datePart, timePart] = reading.timestamp.split(' ');
+        const shortTime = timePart.substring(0, 5); // Get HH:MM
+
+        // Format date as DD/MM
+        const shortDate = datePart.split('/').slice(0, 2).join('/');
+
+        return `${shortDate} ${shortTime}`;
       })
 
       temperatureData.value = realSensorData.map((reading) => reading.temperature || 0)
@@ -449,11 +485,17 @@ onBeforeUnmount(() => {
         <div class="bg-white shadow-lg rounded-lg p-6 border-t-4 border-blue-500">
           <p class="text-2xl font-bold mt-2 pb-5">Current Data</p>
 
-          <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
+            <!-- Current Date -->
+            <div class="bg-white shadow-md rounded-lg p-4 text-center">
+              <h2 class="text-xl font-semibold mb-2">Date</h2>
+              <p class="text-xl font-bold text-gray-700">{{ currentDate }}</p>
+            </div>
+
             <!-- Current Time -->
             <div class="bg-white shadow-md rounded-lg p-4 text-center">
               <h2 class="text-xl font-semibold mb-2">Time</h2>
-              <p class="text-2xl font-bold text-gray-700">{{ currentTime }}</p>
+              <p class="text-xl font-bold text-gray-700">{{ currentTimeOnly }}</p>
             </div>
 
             <!-- Current Temperature -->
