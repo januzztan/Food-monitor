@@ -239,11 +239,6 @@ function exportToCSV() {
   }
 }
 
-// Take picture function (placeholder)
-const takePicture = () => {
-  console.log('Taking picture...')
-}
-
 // =============================================
 // CHART CONFIGURATION FUNCTIONS
 // =============================================
@@ -645,11 +640,9 @@ onBeforeUnmount(() => {
             Export
           </button>
 
-          <!-- Take Picture Button -->
-          <button
-            class="bg-gray-800 hover:bg-gray-900 text-white font-medium py-2.5 px-5 rounded-md transition-all duration-200 flex items-center justify-center shadow-sm"
-            @click="takePicture"
-          >
+          <!-- View Images Button -->
+          <router-link to='/images'
+            class="nav-link bg-gray-800 hover:bg-gray-900 text-white font-medium py-2.5 px-5 rounded-md transition-all duration-200 flex items-center justify-center shadow-sm">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               class="h-4 w-4 mr-2"
@@ -662,8 +655,8 @@ onBeforeUnmount(() => {
                 clip-rule="evenodd"
               />
             </svg>
-            Capture
-          </button>
+            View Images
+          </router-link>
         </div>
       </div>
 
