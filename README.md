@@ -31,34 +31,42 @@ npm install highcharts --save
 .env.*.local
 ```
 
-## Recommended IDE Setup
+## Hosting Setup
 
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
-
-## Customize configuration
-
-See [Vite Configuration Reference](https://vite.dev/config/).
-
-## Project Setup
-
+Install firebase tools 
 ```sh
-npm install
+npm install -g firebase-tools
 ```
 
-### Compile and Hot-Reload for Development
-
+Login to Firebase account (make sure to be added to the firebase project)
 ```sh
-npm run dev
+firebase login
 ```
+*will be redirected to login to firebase account*
 
-### Compile and Minify for Production
+Navigate to project root folder
+```sh
+firebse init hosting
+```
+Follow the steps:  
+Are you ready to proceed? Yes  
+What do you want to use as your public directory? (public) dist  
+Configure as a single-page app (rewrite all urls to /index.html)? Yes  
+Set up automatic builds and deploys with GitHub? No  
+Overwrite existing files? No  
 
+Build Vue project
 ```sh
 npm run build
 ```
 
-### Lint with [ESLint](https://eslint.org/)
-
+Host website
 ```sh
-npm run lint
+firebase deploy --only hosting
 ```
+webpage should be hosted with link presented in cmd *(Remember to refresh the webpage after clicking on link)*
+
+## Recommended IDE Setup
+
+[VSCode](https://code.visualstudio.com/)
+
