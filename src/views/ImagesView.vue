@@ -47,7 +47,7 @@ function formatFullDate(dateString) {
 async function loadImages() {
   try {
     loading.value = true
-    const imagesRef = storageRef(storage, 'Food_Images') //
+    const imagesRef = storageRef(storage, '') //
     const result = await listAll(imagesRef)
 
     const imagePromises = result.items.map(async (itemRef) => {
@@ -171,6 +171,9 @@ onMounted(() => {
         </div>
       </div>
 
+      <!-- Additional spacer for gap between title and list -->
+      <div class="h-4"></div>
+
       <!-- Loading State -->
       <div v-if="loading" class="flex justify-center items-center py-12">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-600"></div>
@@ -182,16 +185,17 @@ onMounted(() => {
       </div>
 
       <!-- Images List -->
-      <div v-else class="space-y-4">
+      <div v-else>
         <div
-          v-for="image in images"
+          v-for="(image, idx) in images"
           :key="image.name"
-          class="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden"
+          class="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden mb-8"
+          :class="{ 'mt-8': idx !== 0 }"
         >
           <div class="p-6">
             <div class="flex items-start justify-between">
               <!-- Image Info -->
-              <div class="flex items-center space-x-4">
+              <div class="flex items-center space-x-12">
                 <!-- File Type Badge -->
                 <div class="bg-gray-100 rounded px-2 py-1 text-xs font-medium text-gray-600 uppercase">
                   JPEG
@@ -199,14 +203,19 @@ onMounted(() => {
 
                 <!-- Image Details -->
                 <div>
-                  <h3 class="font-medium text-gray-900">{{ image.name }}</h3>
-                  <div class="flex items-center space-x-4 text-sm text-gray-500 mt-1">
+                  <h3 class="font-medium text-gray-900 mb-2">{{ image.name }}</h3>
+                  <div class="flex items-center text-sm text-gray-500 gap-x-1">
                     <span class="flex items-center">
                       <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                       </svg>
-                      {{ formatDate(image.timeCreated) }}
+                      {{ formatDate(image.timeCreated).split(' ')[0] }}
                     </span>
+                    <span class="text-gray-300">|</span>
+                    <span>
+                      {{ formatDate(image.timeCreated).split(' ').slice(1).join(' ') }}
+                    </span>
+                    <span class="text-gray-300">|</span>
                     <span>{{ formatFileSize(image.size) }}</span>
                   </div>
                 </div>
