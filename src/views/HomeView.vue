@@ -621,8 +621,8 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="min-h-screen bg-gray-50 font-inter leading-relaxed tracking-wide">
-    <div class="container mx-auto p-6 max-w-7xl">
+  <main class="min-h-screen bg-gray-50 font-inter leading-relaxed tracking-wide flex justify-center">
+    <div class="w-full max-w-7xl p-6">
       <div class="flex justify-between items-center mb-16">
         <div>
           <h1 class="text-4xl font-light text-gray-800 tracking-wide">Food Monitor</h1>
