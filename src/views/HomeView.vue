@@ -526,7 +526,7 @@ onMounted(() => {
 
   // Fetch real data from Firestore, ordered by timestamp
   const q = query(
-    collection(db, 'sensor_readings'),
+    collection(db, 'sensor_data'),
     orderBy('datetime', 'asc'), // Order by datetime field ascending
   )
 
