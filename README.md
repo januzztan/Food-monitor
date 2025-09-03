@@ -46,7 +46,7 @@ firebase login
 
 Navigate to project root folder
 ```sh
-firebse init hosting
+firebase init hosting
 ```
 Follow the steps:  
 Are you ready to proceed? Yes  
